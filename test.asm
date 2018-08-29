@@ -45,8 +45,9 @@ macro init_dll dll_id, dll_name, [func_name]
         dd  0
 }
 
-macro load_dll dll_id
+macro load_dll [dll_id]
 {
+    forward
     push ebx
     push ebx
     local ..next, ..load_loop
@@ -177,7 +178,6 @@ initialize:
 ;
 main:
     ; TODO: Write Code Here
-    load_dll kernel32
-    load_dll user32
+    load_dll kernel32, user32
     invoke fnMessageBoxTimeoutA, 0, aMsg, aCap, 0x40, 0, 2000
     invoke fnExitProcess, 0
