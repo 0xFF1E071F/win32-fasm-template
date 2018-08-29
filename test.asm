@@ -49,6 +49,7 @@ macro load_dll dll_id
 {
     push ebx
     push ebx
+    local ..next, ..load_loop
 ..next:
     mov eax, esp
     invoke fnLdrLoadDll, 1, 0, dll_id#.dll, eax
@@ -176,6 +177,7 @@ initialize:
 ;
 main:
     ; TODO: Write Code Here
+    load_dll kernel32
     load_dll user32
     invoke fnMessageBoxTimeoutA, 0, aMsg, aCap, 0x40, 0, 2000
     invoke fnExitProcess, 0
