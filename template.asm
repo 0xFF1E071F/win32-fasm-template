@@ -45,10 +45,12 @@ macro init_dll dll_id, dll_name, [func_name]
         dd  0
 }
 
-macro load_dll dll_id
+macro load_dll [dll_id]
 {
+    forward
     push ebx
     push ebx
+    local ..next, ..load_loop
 ..next:
     mov eax, esp
     invoke fnLdrLoadDll, 1, 0, dll_id#.dll, eax
@@ -170,4 +172,3 @@ initialize:
 ;
 main:
     ; TODO: Write Code Here
-    db 0xeb, 0xfe
