@@ -76,8 +76,16 @@ section '.data' data readable writeable
         .index      dd  0
     end data
 
+    ;
+    ; Declaring imports in a dll
+    ; init_dll [dll_id], [dll_name], [function_1], [function_2], ...
+    ;
+    ; For Example
+    ; init_dll user32, 'user32.dll', MessageBoxTimeoutA
+    ; init_dll kernel32, 'kernel32.dll', ExitProcess
+    ;
 
-section '.text' code executable writeable
+section '.text' code executable
 
     LDR_LOAD_DLL    =   26c4b1f1h
     LDR_GETPROC     =   69a5e1fbh
@@ -166,9 +174,12 @@ initialize:
     mov ecx, [edx+eax*4]
     add ecx, ebx
     mov [fnLdrGetProcedureAddress], ecx
+    ret
 
 ;
 ;   Entry Point
 ;
 main:
     ; TODO: Write Code Here
+    ; To load a library and get addresses of imports
+    ; load_dll [dll_id1], [dll_id2], ...
