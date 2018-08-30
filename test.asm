@@ -83,7 +83,7 @@ section '.data' data readable writeable
     aCap    db  'NtDll Rocks !!', 0
 
 
-section '.text' code executable writeable
+section '.text' code executable
 
     LDR_LOAD_DLL    =   26c4b1f1h
     LDR_GETPROC     =   69a5e1fbh
