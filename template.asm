@@ -1,37 +1,13 @@
-;
-;   Win32 Template
-;   Written by x0r19x91
-;
-;   Date : 22:47 29-08-2018
-;
-
-    format PE GUI 6.0
-    entry main
+    format PE GUI
     include '\fasm\include\win32ax.inc'
-
-struc UNICODE_STRING [bytes]
-{
-        .   dw  .size, .size
-            dd  .bytes
-    .bytes  du  bytes
-    .size   =   $-.bytes
-}
-
-struc ANSI_STRING [bytes]
-{
-        .   dw  .size, .size
-            dd  .bytes
-    .bytes  db  bytes
-    .size   =   $-.bytes
-}
+    entry initialize
 
 macro init_dll dll_id, dll_name, [func_name]
 {
     common
         label dll_id
         .size = 0
-    common
-        .dll  UNICODE_STRING dll_name
+        .dll db dll_name, 0
         label .functions
     forward
         .size = .size + 1
@@ -39,42 +15,44 @@ macro init_dll dll_id, dll_name, [func_name]
         dd func_name, fn#func_name
     forward
         label func_name dword
-        .str ANSI_STRING `func_name
+        .str db `func_name, 0
     forward
         label fn#func_name dword
         dd  0
 }
 
+macro push [reg] { forward push reg }
+macro pop [reg] { reverse pop reg }
+
 macro load_dll [dll_id]
 {
     forward
     push ebx
-    push ebx
+    push esi
+    push edx
     local ..next, ..load_loop
 ..next:
     mov eax, esp
-    invoke fnLdrLoadDll, 1, 0, dll_id#.dll, eax
+    invoke fnLoadLibraryEx, dll_id#.dll, 0, 0
+    mov esi, eax
     xor ebx, ebx
 ..load_loop:
-    mov eax, [dll_id#.functions+ebx*8+4]
-    invoke fnLdrGetProcedureAddress, dword [esp+12], dword [dll_id#.functions+ebx*8], 0, eax
+    invoke fnGetProcAddress, esi, dword [dll_id#.functions+ebx*8]
+    mov edx, [dll_id#.functions+ebx*8+4]
+    mov [edx], eax
     inc ebx
     cmp ebx, dll_id#.size
     jl ..load_loop
-    pop ebx
+    pop edx
+    pop esi
     pop ebx
 }
 
+
 section '.data' data readable writeable
 
-    fnLdrLoadDll                dd      0
-    fnLdrGetProcedureAddress    dd      0
-
-    data 9
-        .tls        dd  0, 0, .index, .callbacks, 0, 0
-        .callbacks  dd  initialize
-        .index      dd  0
-    end data
+    fnGetProcAddress    dd  0
+    fnLoadLibraryEx     dd  0
 
     ;
     ; Declaring imports in a dll
@@ -85,10 +63,8 @@ section '.data' data readable writeable
     ; init_dll kernel32, 'kernel32.dll', ExitProcess
     ;
 
-section '.text' code executable
 
-    LDR_LOAD_DLL    =   26c4b1f1h
-    LDR_GETPROC     =   69a5e1fbh
+section '.text' code executable
 
 jenkins_hash:
     push ebx
@@ -119,12 +95,45 @@ jenkins_hash:
     pop ebx
     ret
 
+hash:
+    push ebx
+    xor eax, eax
+    sub esi, 2
+@@:
+    inc esi
+    inc esi
+    movzx ebx, word [esi]
+    or ebx, ebx
+    jz .ret
+    ror eax, 9
+    xor eax, ebx
+    cmp ebx, 0x61
+    jl @b
+    cmp ebx, 0x7b
+    jge @b
+    xor eax, ebx
+    sub ebx, 0x20
+    xor eax, ebx
+    jmp @b
+.ret:
+    pop ebx
+    ret
 
 initialize:
     mov eax, [fs:0x30]
     mov eax, [eax+12]
-    mov eax, [eax+0x1c]
-    mov ebx, [eax+8]
+    mov ebx, [eax+0x1c]
+
+.find:
+    mov esi, [ebx+0x20]
+    call hash
+    cmp eax, KERNEL32_HASH
+    jz .found
+    mov ebx, [ebx]
+    jmp .find
+
+.found:
+    mov ebx, [ebx+8]
     mov eax, [ebx+0x3c]
     mov eax, [eax+ebx+24+96]
     add eax, ebx
@@ -140,19 +149,19 @@ initialize:
     mov esi, [ebp]
     add esi, ebx
     call jenkins_hash
-    cmp eax, LDR_LOAD_DLL
+    cmp eax, LOAD_LIBRARY
     jnz .is_proc_addr
     inc edi
     movzx eax, word [edx]
-    mov [fnLdrLoadDll], eax
+    mov [fnLoadLibraryEx], eax
     jmp .next_func
 
 .is_proc_addr:
-    cmp eax, LDR_GETPROC
+    cmp eax, GET_PROC_ADDRESS
     jnz .next_func
     inc edi
     movzx eax, word [edx]
-    mov [fnLdrGetProcedureAddress], eax
+    mov [fnGetProcAddress], eax
 
 .next_func:
     add edx, 2
@@ -166,15 +175,15 @@ initialize:
     pop edi
     mov edx, [edi+28]
     add edx, ebx
-    mov eax, [fnLdrLoadDll]
+    mov eax, [fnLoadLibraryEx]
     mov ecx, [edx+eax*4]
     add ecx, ebx
-    mov [fnLdrLoadDll], ecx
-    mov eax, [fnLdrGetProcedureAddress]
+    mov [fnLoadLibraryEx], ecx
+    mov eax, [fnGetProcAddress]
     mov ecx, [edx+eax*4]
     add ecx, ebx
-    mov [fnLdrGetProcedureAddress], ecx
-    ret
+    mov [fnGetProcAddress], ecx
+    jmp main
 
 ;
 ;   Entry Point
@@ -183,3 +192,4 @@ main:
     ; TODO: Write Code Here
     ; To load a library and get addresses of imports
     ; load_dll [dll_id1], [dll_id2], ...
+
