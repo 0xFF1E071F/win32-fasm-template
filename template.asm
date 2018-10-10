@@ -66,6 +66,10 @@ section '.data' data readable writeable
 
 section '.text' code executable
 
+    GET_PROC_ADDRESS    =   0x8f900864
+    LOAD_LIBRARY        =   0x00635164
+    KERNEL32_HASH       =   0x29A1244C
+
 jenkins_hash:
     push ebx
     xor eax, eax
