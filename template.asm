@@ -124,20 +124,16 @@ hash:
     ret
 
 initialize:
-    mov eax, [fs:0x30]
-    mov eax, [eax+12]
-    mov ebx, [eax+0x1c]
-
-.find:
-    mov esi, [ebx+0x20]
-    call hash
-    cmp eax, KERNEL32_HASH
-    jz .found
-    mov ebx, [ebx]
-    jmp .find
-
-.found:
-    mov ebx, [ebx+8]
+    mov ebx, [esp]  ; somewhere in kernel32.BaseThreadInitThunk
+    xor bx, bx      ; align it to 64K
+    add ebx, 0x10000
+@@:
+    sub ebx, 0x10000
+    cmp word [ebx], 'MZ'
+    jnz @b
+ 
+found_kernel32:
+    ; ebx points to kernel32 base
     mov eax, [ebx+0x3c]
     mov eax, [eax+ebx+24+96]
     add eax, ebx
